@@ -1,0 +1,299 @@
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const config = require('./config');
+const app = express();
+const PORT = config.getConfig().port;
+
+// 请求限流器
+class RateLimiter {
+    constructor(maxRequestsPerSecond) {
+        this.maxRequests = maxRequestsPerSecond;
+        this.requests = [];
+        this.interval = 1000; // 1秒
+    }
+
+    canMakeRequest() {
+        const now = Date.now();
+        // 清理旧的请求记录
+        this.requests = this.requests.filter(time => now - time < this.interval);
+
+        if (this.requests.length < this.maxRequests) {
+            this.requests.push(now);
+            return true;
+        }
+        return false;
+    }
+}
+
+const refreshLimiter = new RateLimiter(config.getConfig().maxRefreshRequestsPerSecond);
+
+// 限速中间件
+const speedLimitMiddleware = (req, res, next) => {
+    const speedLimit = config.getSpeedLimit();
+    if (!speedLimit) {
+        return next();
+    }
+
+    // 保存原始的send方法
+    const originalSend = res.send;
+    let lastChunkTime = Date.now();
+    let bytesSent = 0;
+
+    // 创建限速的write方法
+    const throttle = (chunk) => {
+        const now = Date.now();
+        const timeDiff = now - lastChunkTime;
+        const expectedBytes = (speedLimit * timeDiff) / 1000;
+
+        if (bytesSent + chunk.length > expectedBytes && timeDiff < 1000) {
+            // 需要延迟
+            const delay = ((bytesSent + chunk.length - expectedBytes) / speedLimit) * 1000;
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    bytesSent += chunk.length;
+                    lastChunkTime = Date.now();
+                    resolve(true);
+                }, Math.min(delay, 1000));
+            });
+        } else {
+            bytesSent += chunk.length;
+            lastChunkTime = now;
+            return Promise.resolve(true);
+        }
+    };
+
+    // 重写res.send
+    res.send = function(chunk) {
+        if (chunk && typeof chunk === 'object') {
+            return originalSend.call(this, chunk);
+        }
+        return originalSend.call(this, chunk);
+    };
+
+    next();
+};
+
+// 静态文件服务
+app.use(express.static('public'));
+
+// 请求日志中间件
+app.use((req, res, next) => {
+    config.log('info', `${req.method} ${req.url} - ${req.ip}`);
+    next();
+});
+
+// API: 获取文件列表（支持嵌套目录和数量限制）
+app.get('/api/files', (req, res) => {
+    // 限流检查
+    if (!refreshLimiter.canMakeRequest()) {
+        config.log('warn', '刷新请求过于频繁，已限流');
+        return res.status(429).json({
+            success: false,
+            error: '请求过于频繁，请稍后再试'
+        });
+    }
+
+    const maxFiles = config.getMaxFilesToList();
+    let totalFilesCount = 0;
+    let isTruncated = false;
+
+    const getFileTree = (dirPath, relativePath = '') => {
+        // 检查是否达到文件数量限制
+        if (maxFiles !== -1 && totalFilesCount >= maxFiles) {
+            isTruncated = true;
+            return [];
+        }
+
+        try {
+            const items = fs.readdirSync(dirPath);
+            const result = [];
+
+            for (const item of items) {
+                if (maxFiles !== -1 && totalFilesCount >= maxFiles) {
+                    isTruncated = true;
+                    break;
+                }
+
+                const fullPath = path.join(dirPath, item);
+                const stat = fs.statSync(fullPath);
+                const relativeItemPath = relativePath ? path.join(relativePath, item) : item;
+
+                if (stat.isDirectory()) {
+                    const children = getFileTree(fullPath, relativeItemPath);
+                    result.push({
+                        name: item,
+                        type: 'directory',
+                        path: relativeItemPath,
+                        children: children,
+                        itemCount: children.length
+                    });
+                    totalFilesCount += children.length;
+                } else {
+                    // 检查文件是否允许下载
+                    if (config.isFileAllowed(item)) {
+                        result.push({
+                            name: item,
+                            type: 'file',
+                            path: relativeItemPath,
+                            size: stat.size,
+                            modified: stat.mtime
+                        });
+                        totalFilesCount++;
+                    } else {
+                        config.log('debug', `跳过不允许的文件: ${item}`);
+                    }
+                }
+            }
+
+            return result;
+        } catch (error) {
+            config.log('error', `读取目录失败: ${dirPath}`, error);
+            return [];
+        }
+    };
+
+    try {
+        const filesDir = config.getConfig().resolvedFilesDirectory;
+        const fileTree = getFileTree(filesDir);
+
+        const response = {
+            success: true,
+            files: fileTree,
+            stats: {
+                totalCount: totalFilesCount,
+                isTruncated: isTruncated,
+                maxAllowed: maxFiles === -1 ? 'unlimited' : maxFiles
+            }
+        };
+
+        if (isTruncated) {
+            response.warning = `结果已截断，仅显示前 ${maxFiles} 个文件`;
+            config.log('warn', `文件列表截断: 显示 ${totalFilesCount}/${maxFiles} 个文件`);
+        }
+
+        res.json(response);
+    } catch (error) {
+        config.log('error', '获取文件列表失败:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// API: 下载文件（支持限速）
+app.get('/api/download/*', speedLimitMiddleware, (req, res) => {
+    const filePath = req.params[0];
+    const fullPath = path.join(config.getConfig().resolvedFilesDirectory, filePath);
+
+    // 安全检查：确保文件路径在指定目录内
+    const realPath = path.resolve(fullPath);
+    if (!realPath.startsWith(path.resolve(config.getConfig().resolvedFilesDirectory))) {
+        config.log('warn', `非法访问尝试: ${filePath} from ${req.ip}`);
+        return res.status(403).json({ error: '访问被拒绝' });
+    }
+
+    // 检查文件是否存在
+    if (!fs.existsSync(realPath)) {
+        config.log('warn', `文件不存在: ${filePath}`);
+        return res.status(404).json({ error: '文件不存在' });
+    }
+
+    const stat = fs.statSync(realPath);
+    if (stat.isDirectory()) {
+        return res.status(400).json({ error: '不能下载目录' });
+    }
+
+    // 检查文件扩展名是否允许
+    const fileName = path.basename(realPath);
+    if (!config.isFileAllowed(fileName)) {
+        config.log('warn', `尝试下载不允许的文件: ${fileName} from ${req.ip}`);
+        return res.status(403).json({ error: '文件类型不允许下载' });
+    }
+
+    // 记录下载日志
+    config.log('info', `下载文件: ${fileName} (${(stat.size / 1024 / 1024).toFixed(2)} MB) - ${req.ip}`);
+
+    // 设置响应头
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Length', stat.size);
+
+    // 如果启用了限速，使用限速流
+    const speedLimit = config.getSpeedLimit();
+    if (speedLimit) {
+        const stream = fs.createReadStream(realPath);
+        let bytesSent = 0;
+        let lastTime = Date.now();
+
+        stream.on('data', (chunk) => {
+            const now = Date.now();
+            const timeDiff = now - lastTime;
+            const expectedBytes = (speedLimit * timeDiff) / 1000;
+
+            if (bytesSent + chunk.length > expectedBytes && timeDiff < 1000) {
+                // 需要延迟
+                const delay = ((bytesSent + chunk.length - expectedBytes) / speedLimit) * 1000;
+                stream.pause();
+                setTimeout(() => {
+                    bytesSent += chunk.length;
+                    lastTime = Date.now();
+                    stream.resume();
+                }, Math.min(delay, 1000));
+            } else {
+                bytesSent += chunk.length;
+                lastTime = now;
+            }
+        });
+
+        stream.pipe(res);
+
+        stream.on('error', (err) => {
+            config.log('error', `文件流错误: ${fileName}`, err);
+            if (!res.headersSent) {
+                res.status(500).json({ error: '下载失败' });
+            }
+        });
+    } else {
+        // 不限速，直接下载
+        res.download(realPath, fileName, (err) => {
+            if (err && !res.headersSent) {
+                config.log('error', `下载失败: ${fileName}`, err);
+                res.status(500).json({ error: '下载失败' });
+            }
+        });
+    }
+});
+
+// 健康检查接口
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        config: {
+            filesDirectory: config.getConfig().resolvedFilesDirectory,
+            maxFilesToList: config.getConfig().maxFilesToList,
+            enableSpeedLimit: config.getConfig().enableSpeedLimit,
+            speedLimit: config.getConfig().downloadSpeedLimit,
+            refreshLimit: config.getConfig().maxRefreshRequestsPerSecond
+        }
+    });
+});
+
+// 启动服务器
+app.listen(PORT, () => {
+    console.log('\n=================================');
+    console.log('🚀 文件下载服务已启动');
+    console.log('=================================');
+    console.log(`📍 访问地址: http://localhost:${PORT}`);
+    console.log(`📂 文件目录: ${config.getConfig().resolvedFilesDirectory}`);
+    console.log(`⚙️  配置文件: ${config.configPath}`);
+    console.log('=================================\n');
+
+    // 显示配置信息
+    const cfg = config.getConfig();
+    console.log('配置信息:');
+    console.log(`  - 最大文件数: ${cfg.maxFilesToList === -1 ? '无限制' : cfg.maxFilesToList}`);
+    console.log(`  - 刷新限流: ${cfg.maxRefreshRequestsPerSecond} 次/秒`);
+    console.log(`  - 下载限速: ${cfg.enableSpeedLimit ? (cfg.downloadSpeedLimit / 1024).toFixed(0) + ' KB/s' : '不限速'}`);
+    console.log(`  - 日志级别: ${cfg.logLevel}`);
+    console.log('=================================\n');
+});
