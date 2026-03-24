@@ -5,28 +5,49 @@ const config = require('./config');
 const app = express();
 const PORT = config.getConfig().port;
 
-// 请求限流器
-class RateLimiter {
-    constructor(maxRequestsPerSecond) {
-        this.maxRequests = maxRequestsPerSecond;
-        this.requests = [];
-        this.interval = 1000; // 1秒
+// 令牌桶限流器 - 支持小数和更平滑的限流
+class TokenBucketRateLimiter {
+    constructor(ratePerSecond, capacity = null) {
+        this.rate = ratePerSecond;           // 每秒添加的令牌数（支持小数）
+        this.capacity = capacity || ratePerSecond;  // 桶的容量
+        this.tokens = this.capacity;         // 当前令牌数
+        this.lastRefill = Date.now();
     }
 
     canMakeRequest() {
         const now = Date.now();
-        // 清理旧的请求记录
-        this.requests = this.requests.filter(time => now - time < this.interval);
+        const timePassed = (now - this.lastRefill) / 1000; // 秒
 
-        if (this.requests.length < this.maxRequests) {
-            this.requests.push(now);
+        // 添加新令牌
+        this.tokens = Math.min(
+            this.capacity,
+            this.tokens + timePassed * this.rate
+        );
+        this.lastRefill = now;
+
+        // 检查是否有可用令牌
+        if (this.tokens >= 1) {
+            this.tokens -= 1;
             return true;
         }
+
         return false;
+    }
+
+    // 获取下一次可请求的等待时间（毫秒）
+    getWaitTime() {
+        if (this.tokens >= 1) return 0;
+
+        const tokensNeeded = 1 - this.tokens;
+        const waitSeconds = tokensNeeded / this.rate;
+        return Math.ceil(waitSeconds * 1000);
     }
 }
 
-const refreshLimiter = new RateLimiter(config.getConfig().maxRefreshRequestsPerSecond);
+// 创建限流器实例
+const refreshLimiter = new TokenBucketRateLimiter(
+    config.getConfig().maxRefreshRequestsPerSecond
+);
 
 // 限速中间件
 const speedLimitMiddleware = (req, res, next) => {
@@ -87,10 +108,14 @@ app.use((req, res, next) => {
 app.get('/api/files', (req, res) => {
     // 限流检查
     if (!refreshLimiter.canMakeRequest()) {
-        config.log('warn', '刷新请求过于频繁，已限流');
+        const waitTime = refreshLimiter.getWaitTime();
+        config.log('warn', `刷新请求过于频繁，需要等待 ${waitTime}ms`);
+
+        res.setHeader('Retry-After', Math.ceil(waitTime / 1000));
         return res.status(429).json({
             success: false,
-            error: '请求过于频繁，请稍后再试'
+            error: `请求过于频繁，请在 ${Math.ceil(waitTime / 1000)} 秒后重试`,
+            retryAfter: waitTime
         });
     }
 

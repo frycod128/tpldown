@@ -63,21 +63,25 @@ class ConfigManager {
 
     // 验证配置
     validateConfig() {
+        // 验证 maxFilesToList
         if (this.config.maxFilesToList !== -1 && this.config.maxFilesToList < 1) {
             console.warn('⚠️ maxFilesToList 无效，使用默认值 20');
             this.config.maxFilesToList = 20;
         }
 
-        if (this.config.maxRefreshRequestsPerSecond < 1) {
+        // 验证 maxRefreshRequestsPerSecond - 支持小数
+        if (this.config.maxRefreshRequestsPerSecond <= 0) {
             console.warn('⚠️ maxRefreshRequestsPerSecond 无效，使用默认值 1');
             this.config.maxRefreshRequestsPerSecond = 1;
         }
 
+        // 验证 downloadSpeedLimit
         if (this.config.downloadSpeedLimit < 1024 && this.config.enableSpeedLimit) {
             console.warn('⚠️ downloadSpeedLimit 过小，设置为最小值 1KB/s');
             this.config.downloadSpeedLimit = 1024;
         }
 
+        // 验证端口
         if (this.config.port < 1 || this.config.port > 65535) {
             console.warn('⚠️ 端口号无效，使用默认值 3000');
             this.config.port = 3000;

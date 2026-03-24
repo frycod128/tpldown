@@ -1,0 +1,19 @@
+# 默认忽略的文件
+/shelf/
+*/workspace.xml
+# 已忽略包含查询文件的默认文件夹
+/queries/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+# 基于编辑器的 HTTP 客户端请求
+/httpRequests/
+# node相关
+node_modules/
+# 内容文件夹
+files/
+# 操作系统文件
+.DS_Store
+*.log
+# 配置文件
+/config.json
