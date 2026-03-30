@@ -104,6 +104,15 @@ app.use((req, res, next) => {
     next();
 });
 
+// API: 获取文件图标配置
+app.get('/api/icons', (req, res) => {
+    res.json({
+        success: true,
+        icons: config.getConfig().fileIcons || {},
+        defaultIcon: config.getConfig().defaultFileIcon || '📄'
+    });
+});
+
 // API: 获取文件列表（支持嵌套目录和数量限制）
 app.get('/api/files', (req, res) => {
     // 限流检查
@@ -162,7 +171,8 @@ app.get('/api/files', (req, res) => {
                             type: 'file',
                             path: relativeItemPath,
                             size: stat.size,
-                            modified: stat.mtime
+                            modified: stat.mtime,
+                            icon: config.getFileIcon(item)  // 添加图标信息
                         });
                         totalFilesCount++;
                     } else {

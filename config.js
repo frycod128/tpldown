@@ -25,7 +25,30 @@ const defaultConfig = {
 
     // 日志配置
     enableLogging: true,         // 是否启用日志
-    logLevel: 'info'             // 日志级别: debug, info, warn, error
+    logLevel: 'info',            // 日志级别: debug, info, warn, error
+
+    // 文件图标映射配置
+    fileIcons: {
+        // 图片
+        '.jpg': '🖼️', '.jpeg': '🖼️', '.png': '🖼️', '.gif': '🎞️', '.bmp': '🖼️', '.svg': '🎨', '.webp': '🖼️',
+        // 视频
+        '.mp4': '🎬', '.avi': '🎬', '.mkv': '🎬', '.mov': '🎬', '.wmv': '🎬', '.flv': '🎬', '.webm': '🎬',
+        // 音频
+        '.mp3': '🎵', '.wav': '🎵', '.flac': '🎵', '.aac': '🎵', '.ogg': '🎵', '.m4a': '🎵',
+        // 文档
+        '.pdf': '📄', '.doc': '📝', '.docx': '📝', '.xls': '📊', '.xlsx': '📊', '.ppt': '📽️', '.pptx': '📽️',
+        '.txt': '📃', '.md': '📃', '.rtf': '📃',
+        // 压缩包
+        '.zip': '🗜️', '.rar': '🗜️', '.7z': '🗜️', '.tar': '🗜️', '.gz': '🗜️',
+        // 代码
+        '.js': '💻', '.html': '🌐', '.css': '🎨', '.json': '🔧', '.xml': '🔧', '.py': '🐍', '.java': '☕',
+        '.c': '⚙️', '.cpp': '⚙️', '.h': '⚙️',
+        // 可执行
+        '.exe': '⚙️', '.msi': '📦', '.apk': '📱',
+        // 其他常见
+        '.iso': '💿', '.img': '💿'
+    },
+    defaultFileIcon: '📄'  // 默认文件图标
 };
 
 class ConfigManager {
@@ -41,6 +64,10 @@ class ConfigManager {
             if (fs.existsSync(this.configPath)) {
                 const configData = fs.readFileSync(this.configPath, 'utf8');
                 const userConfig = JSON.parse(configData);
+                // 深度合并 fileIcons 配置
+                if (userConfig.fileIcons) {
+                    userConfig.fileIcons = { ...defaultConfig.fileIcons, ...userConfig.fileIcons };
+                }
                 this.config = { ...defaultConfig, ...userConfig };
                 console.log('✅ 配置文件加载成功:', this.configPath);
                 this.validateConfig();
@@ -125,6 +152,13 @@ class ConfigManager {
     // 获取配置
     getConfig() {
         return this.config;
+    }
+
+    // 根据文件扩展名获取图标
+    getFileIcon(filename) {
+        const ext = path.extname(filename).toLowerCase();
+        const icons = this.config.fileIcons || {};
+        return icons[ext] || this.config.defaultFileIcon || '📄';
     }
 
     // 检查文件扩展名是否允许下载

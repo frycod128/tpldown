@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文件下载服务</title>
     <style>
+        /* 样式保持不变，省略... */
         * {
             margin: 0;
             padding: 0;
@@ -24,7 +25,6 @@
             padding: 20px;
         }
 
-        /* 头部 */
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -44,7 +44,6 @@
             font-size: 14px;
         }
 
-        /* 导航栏 */
         .nav-bar {
             background: white;
             padding: 12px 20px;
@@ -103,7 +102,6 @@
             cursor: not-allowed;
         }
 
-        /* 文件列表 */
         .file-list {
             background: white;
             border-radius: 16px;
@@ -127,12 +125,10 @@
             border-bottom: none;
         }
 
-        /* 文件夹样式 */
         .file-item.directory {
             cursor: pointer;
         }
 
-        /* 图标 */
         .file-icon {
             width: 40px;
             height: 40px;
@@ -183,7 +179,6 @@
             background: #66b1ff;
         }
 
-        /* 空状态 */
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -196,7 +191,6 @@
             opacity: 0.5;
         }
 
-        /* 加载状态 */
         .loading {
             text-align: center;
             padding: 40px;
@@ -217,7 +211,6 @@
             to { transform: rotate(360deg); }
         }
 
-        /* 统计信息 */
         .stats {
             margin-top: 16px;
             padding: 12px 20px;
@@ -229,7 +222,6 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
 
-        /* 响应式 */
         @media (max-width: 768px) {
             .container {
                 padding: 12px;
@@ -265,7 +257,6 @@
         <p>点击文件夹进入，点击文件下载</p>
     </div>
 
-    <!-- 导航栏 -->
     <div class="nav-bar">
         <div class="current-location">
             <span class="label">当前位置：</span>
@@ -276,7 +267,6 @@
         </button>
     </div>
 
-    <!-- 文件列表 -->
     <div class="file-list" id="fileList">
         <div class="loading">
             <div class="spinner"></div>
@@ -284,41 +274,14 @@
         </div>
     </div>
 
-    <div class="stats" id="stats">
-        <!-- 动态生成 -->
-    </div>
+    <div class="stats" id="stats"></div>
 </div>
 
 <script>
-    // 当前路径（相对于文件根目录）- 统一使用正斜杠分隔
     let currentPath = '';
+    let iconConfig = { icons: {}, defaultIcon: '📄' };
 
-    // 文件图标映射
-    const iconMap = {
-        // 图片
-        '.jpg': '🖼️', '.jpeg': '🖼️', '.png': '🖼️', '.gif': '🎞️', '.bmp': '🖼️', '.svg': '🎨', '.webp': '🖼️',
-        // 视频
-        '.mp4': '🎬', '.avi': '🎬', '.mkv': '🎬', '.mov': '🎬', '.wmv': '🎬', '.flv': '🎬', '.webm': '🎬',
-        // 音频
-        '.mp3': '🎵', '.wav': '🎵', '.flac': '🎵', '.aac': '🎵', '.ogg': '🎵', '.m4a': '🎵',
-        // 文档
-        '.pdf': '📄', '.doc': '📝', '.docx': '📝', '.xls': '📊', '.xlsx': '📊', '.ppt': '📽️', '.pptx': '📽️',
-        '.txt': '📃', '.md': '📃', '.rtf': '📃',
-        // 压缩包
-        '.zip': '🗜️', '.rar': '🗜️', '.7z': '🗜️', '.tar': '🗜️', '.gz': '🗜️',
-        // 代码
-        '.js': '💻', '.html': '🌐', '.css': '🎨', '.json': '🔧', '.xml': '🔧', '.py': '🐍', '.java': '☕',
-        '.c': '⚙️', '.cpp': '⚙️', '.h': '⚙️',
-        // 可执行
-        '.exe': '⚙️', '.msi': '📦', '.apk': '📱',
-        // 其他常见
-        '.iso': '💿', '.img': '💿'
-    };
-
-    // 默认图标
-    const defaultIcon = '📄';
-
-    // HTML转义函数 - 必须在使用前定义
+    // HTML转义函数
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/[&<>]/g, function(m) {
@@ -329,10 +292,10 @@
         });
     }
 
-    // 获取文件图标
+    // 获取文件图标（从后端配置获取）
     function getFileIcon(filename) {
         const ext = filename.substring(filename.lastIndexOf('.')).toLowerCase();
-        return iconMap[ext] || defaultIcon;
+        return iconConfig.icons[ext] || iconConfig.defaultIcon;
     }
 
     // 格式化文件大小
@@ -351,19 +314,12 @@
         return date.toLocaleString('zh-CN');
     }
 
-    // 规范化路径 - 统一使用正斜杠，移除首尾斜杠
+    // 规范化路径
     function normalizePath(path) {
         if (!path) return '';
-        // 将反斜杠替换为正斜杠
         let normalized = path.replace(/\\/g, '/');
-        // 移除开头的斜杠
-        if (normalized.startsWith('/')) {
-            normalized = normalized.substring(1);
-        }
-        // 移除结尾的斜杠
-        if (normalized.endsWith('/')) {
-            normalized = normalized.slice(0, -1);
-        }
+        if (normalized.startsWith('/')) normalized = normalized.substring(1);
+        if (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
         return normalized;
     }
 
@@ -405,10 +361,9 @@
         loadCurrentDirectory();
     }
 
-    // 根据路径查找目录（路径已规范化为正斜杠）
+    // 根据路径查找目录
     function findDirectoryByPath(nodes, targetPath) {
         if (!targetPath) {
-            // 根目录，返回包含所有节点的虚拟根
             return { children: nodes };
         }
 
@@ -417,15 +372,12 @@
 
         for (const part of parts) {
             if (!current.children) return null;
-
             const found = current.children.find(child =>
                 child.type === 'directory' && child.name === part
             );
-
             if (!found) return null;
             current = found;
         }
-
         return current;
     }
 
@@ -443,7 +395,6 @@
             return;
         }
 
-        // 排序：文件夹在前，文件在后
         const sorted = [...items].sort((a, b) => {
             if (a.type === 'directory' && b.type !== 'directory') return -1;
             if (a.type !== 'directory' && b.type === 'directory') return 1;
@@ -453,7 +404,6 @@
         let html = '';
         for (const item of sorted) {
             if (item.type === 'directory') {
-                // 构建进入该文件夹的完整路径
                 const dirFullPath = currentPath ? `${currentPath}/${item.name}` : item.name;
                 html += `
                         <div class="file-item directory" data-path="${escapeHtml(dirFullPath)}">
@@ -466,10 +416,10 @@
                         </div>
                     `;
             } else {
-                const icon = getFileIcon(item.name);
+                // 使用后端返回的图标，如果没有则用函数获取
+                const icon = item.icon || getFileIcon(item.name);
                 const sizeStr = formatFileSize(item.size);
                 const dateStr = item.modified ? formatDate(item.modified) : '';
-                // 构建文件的完整路径
                 const fileFullPath = currentPath ? `${currentPath}/${item.name}` : item.name;
                 html += `
                         <div class="file-item file" data-file="${escapeHtml(item.name)}" data-path="${escapeHtml(fileFullPath)}">
@@ -490,12 +440,9 @@
         // 绑定文件夹点击事件
         fileListEl.querySelectorAll('.file-item.directory').forEach(el => {
             el.addEventListener('click', (e) => {
-                // 防止点击到子元素时冒泡问题
                 if (e.target.classList.contains('download-btn')) return;
                 const path = el.getAttribute('data-path');
-                if (path !== undefined && path !== null) {
-                    navigateTo(path);
-                }
+                if (path) navigateTo(path);
             });
         });
 
@@ -504,20 +451,16 @@
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const filePath = btn.getAttribute('data-path');
-                if (filePath) {
-                    downloadFile(filePath);
-                }
+                if (filePath) downloadFile(filePath);
             });
         });
 
-        // 绑定文件项点击事件（点击文件区域也下载）
+        // 绑定文件项点击事件
         fileListEl.querySelectorAll('.file-item.file').forEach(el => {
             el.addEventListener('click', (e) => {
                 if (e.target.classList.contains('download-btn')) return;
                 const filePath = el.getAttribute('data-path');
-                if (filePath) {
-                    downloadFile(filePath);
-                }
+                if (filePath) downloadFile(filePath);
             });
         });
     }
@@ -533,7 +476,6 @@
             `;
 
         try {
-            // 获取完整文件树
             const response = await fetch('/api/files');
             const data = await response.json();
 
@@ -541,12 +483,8 @@
                 throw new Error(data.error || '加载失败');
             }
 
-            // 根据当前路径查找对应的目录节点
             let currentDir = findDirectoryByPath(data.files, currentPath);
-
-            // 如果没有找到且currentPath不为空，说明路径可能有问题
             if (currentPath && !currentDir) {
-                console.warn('路径不存在:', currentPath);
                 currentDir = { children: [] };
             } else if (!currentDir) {
                 currentDir = { children: data.files };
@@ -567,13 +505,27 @@
         }
     }
 
+    // 加载图标配置
+    async function loadIconConfig() {
+        try {
+            const response = await fetch('/api/icons');
+            const data = await response.json();
+            if (data.success) {
+                iconConfig = {
+                    icons: data.icons || {},
+                    defaultIcon: data.defaultIcon || '📄'
+                };
+            }
+        } catch (error) {
+            console.warn('加载图标配置失败，使用默认配置:', error);
+        }
+    }
+
     // 下载文件
     function downloadFile(filePath) {
-        // 确保路径使用正斜杠
         const normalizedPath = normalizePath(filePath);
         const downloadUrl = `/api/download/${encodeURIComponent(normalizedPath)}`;
 
-        // 创建隐藏链接下载
         const link = document.createElement('a');
         link.href = downloadUrl;
         link.download = '';
@@ -581,18 +533,14 @@
         link.click();
         document.body.removeChild(link);
 
-        // 显示提示
         const fileName = normalizedPath.split('/').pop();
         showToast(`开始下载: ${fileName}`);
     }
 
-    // 简单的提示
+    // 提示
     function showToast(message) {
-        // 检查是否已有toast
         let toast = document.querySelector('.toast-message');
-        if (toast) {
-            toast.remove();
-        }
+        if (toast) toast.remove();
 
         toast = document.createElement('div');
         toast.className = 'toast-message';
@@ -611,7 +559,6 @@
                 animation: fadeOut 2s ease forwards;
             `;
 
-        // 添加动画
         const style = document.createElement('style');
         style.textContent = `
                 @keyframes fadeOut {
@@ -621,7 +568,6 @@
                 }
             `;
         document.head.appendChild(style);
-
         document.body.appendChild(toast);
 
         setTimeout(() => {
@@ -634,18 +580,17 @@
         const statsEl = document.getElementById('stats');
         const fileCount = items.filter(i => i.type === 'file').length;
         const dirCount = items.filter(i => i.type === 'directory').length;
-
-        let pathDisplay = currentPath ? `/ ${currentPath}` : '根目录';
-        statsEl.innerHTML = `📁 ${dirCount} 个文件夹 &nbsp;|&nbsp; 📄 ${fileCount} 个文件`;
+        const pathDisplay = currentPath ? `/ ${currentPath}` : '根目录';
+        statsEl.innerHTML = `📍 ${pathDisplay} &nbsp;|&nbsp; 📁 ${dirCount} 个文件夹 &nbsp;|&nbsp; 📄 ${fileCount} 个文件`;
     }
 
     // 页面初始化
-    document.addEventListener('DOMContentLoaded', () => {
-        // 绑定返回按钮事件
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadIconConfig();
+
         const backBtn = document.getElementById('backButton');
         backBtn.addEventListener('click', goBack);
 
-        // 初始加载
         updatePathDisplay();
         loadCurrentDirectory();
     });
