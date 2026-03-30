@@ -13,291 +13,642 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
+            background: #f5f7fa;
+            color: #1f2d3d;
+            line-height: 1.6;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
+            padding: 20px;
         }
 
+        /* 头部 */
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
-        h1 {
+        .header h1 {
             font-size: 28px;
-            font-weight: 600;
-            margin: 0;
+            margin-bottom: 8px;
         }
 
-        .refresh-btn {
-            background: rgba(255,255,255,0.2);
-            border: 2px solid rgba(255,255,255,0.3);
-            color: white;
-            padding: 10px 24px;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        /* 导航栏 */
+        .nav-bar {
+            background: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .current-location {
             display: flex;
             align-items: center;
             gap: 8px;
+            font-size: 14px;
+            color: #606266;
+            word-break: break-all;
         }
 
-        .refresh-btn:hover {
-            background: rgba(255,255,255,0.3);
-            transform: translateY(-2px);
+        .current-location .label {
+            color: #909399;
         }
 
-        .refresh-btn:active {
-            transform: translateY(0);
+        .current-location .path {
+            font-family: monospace;
+            background: #f5f7fa;
+            padding: 4px 10px;
+            border-radius: 6px;
+            color: #409eff;
         }
 
-        .content {
-            padding: 30px;
-            min-height: 400px;
+        .back-button {
+            background: #f0f2f5;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #606266;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
         }
 
+        .back-button:hover {
+            background: #e4e7ed;
+            color: #409eff;
+        }
+
+        .back-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 文件列表 */
         .file-list {
-            list-style: none;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+            overflow: hidden;
         }
 
         .file-item {
-            padding: 12px;
-            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 1px solid #ebeef5;
             transition: background 0.2s;
         }
 
         .file-item:hover {
-            background: #f5f5f5;
+            background: #f5f7fa;
         }
 
-        .directory-item {
-            background: #f8f9fa;
+        .file-item:last-child {
+            border-bottom: none;
         }
 
-        .item-content {
-            display: flex;
-            align-items: center;
-            gap: 12px;
+        /* 文件夹样式 */
+        .file-item.directory {
             cursor: pointer;
         }
 
-        .file-icon, .dir-icon {
-            font-size: 20px;
-            width: 30px;
-        }
-
+        /* 图标 */
         .file-icon {
-            color: #4caf50;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 16px;
+            font-size: 28px;
         }
 
-        .dir-icon {
-            color: #ff9800;
+        .file-info {
+            flex: 1;
         }
 
         .file-name {
-            flex: 1;
-            font-size: 16px;
-            color: #333;
+            font-size: 15px;
+            font-weight: 500;
+            color: #2c3e50;
+            word-break: break-all;
+        }
+
+        .file-meta {
+            font-size: 12px;
+            color: #909399;
+            margin-top: 4px;
         }
 
         .file-size {
+            font-size: 13px;
+            color: #606266;
+            min-width: 100px;
+            text-align: right;
+        }
+
+        .download-btn {
+            background: #409eff;
+            color: white;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 20px;
             font-size: 12px;
-            color: #999;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-left: 12px;
         }
 
-        .download-link {
-            text-decoration: none;
-            color: inherit;
-            display: block;
+        .download-btn:hover {
+            background: #66b1ff;
         }
 
-        .children {
-            margin-left: 30px;
-            margin-top: 10px;
-            list-style: none;
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #909399;
         }
 
+        .empty-state .icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* 加载状态 */
         .loading {
             text-align: center;
             padding: 40px;
-            color: #999;
+            color: #909399;
         }
 
-        .error {
-            text-align: center;
-            padding: 40px;
-            color: #f44336;
-            background: #ffebee;
-            border-radius: 8px;
-        }
-
-        .empty {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-        }
-
-        .breadcrumb {
-            margin-bottom: 20px;
-            padding: 10px;
-            background: #f5f5f5;
-            border-radius: 8px;
-            font-size: 14px;
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e4e7ed;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            to { transform: rotate(360deg); }
         }
 
-        .refresh-btn.loading svg {
-            animation: spin 1s linear infinite;
+        /* 统计信息 */
+        .stats {
+            margin-top: 16px;
+            padding: 12px 20px;
+            background: white;
+            border-radius: 12px;
+            font-size: 13px;
+            color: #909399;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .file-item {
+                flex-wrap: wrap;
+                padding: 12px 16px;
+            }
+
+            .file-size {
+                width: 100%;
+                text-align: left;
+                margin-top: 8px;
+                margin-left: 56px;
+            }
+
+            .download-btn {
+                margin-top: 8px;
+                margin-left: 56px;
+            }
         }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <h1>📁 文件下载中心</h1>
-        <button class="refresh-btn" id="refreshBtn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 4v6h-6M1 20v-6h6"/>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-            </svg>
-            刷新列表
+        <h1>📁 文件下载服务</h1>
+        <p>点击文件夹进入，点击文件下载</p>
+    </div>
+
+    <!-- 导航栏 -->
+    <div class="nav-bar">
+        <div class="current-location">
+            <span class="label">当前位置：</span>
+            <span class="path" id="currentPathDisplay">根目录</span>
+        </div>
+        <button class="back-button" id="backButton" title="返回上级目录">
+            🔙 返回上级
         </button>
     </div>
-    <div class="content">
-        <div id="fileList" class="file-list">
-            <div class="loading">加载中...</div>
+
+    <!-- 文件列表 -->
+    <div class="file-list" id="fileList">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>加载中...</p>
         </div>
+    </div>
+
+    <div class="stats" id="stats">
+        <!-- 动态生成 -->
     </div>
 </div>
 
 <script>
+    // 当前路径（相对于文件根目录）- 统一使用正斜杠分隔
     let currentPath = '';
+
+    // 文件图标映射
+    const iconMap = {
+        // 图片
+        '.jpg': '🖼️', '.jpeg': '🖼️', '.png': '🖼️', '.gif': '🎞️', '.bmp': '🖼️', '.svg': '🎨', '.webp': '🖼️',
+        // 视频
+        '.mp4': '🎬', '.avi': '🎬', '.mkv': '🎬', '.mov': '🎬', '.wmv': '🎬', '.flv': '🎬', '.webm': '🎬',
+        // 音频
+        '.mp3': '🎵', '.wav': '🎵', '.flac': '🎵', '.aac': '🎵', '.ogg': '🎵', '.m4a': '🎵',
+        // 文档
+        '.pdf': '📄', '.doc': '📝', '.docx': '📝', '.xls': '📊', '.xlsx': '📊', '.ppt': '📽️', '.pptx': '📽️',
+        '.txt': '📃', '.md': '📃', '.rtf': '📃',
+        // 压缩包
+        '.zip': '🗜️', '.rar': '🗜️', '.7z': '🗜️', '.tar': '🗜️', '.gz': '🗜️',
+        // 代码
+        '.js': '💻', '.html': '🌐', '.css': '🎨', '.json': '🔧', '.xml': '🔧', '.py': '🐍', '.java': '☕',
+        '.c': '⚙️', '.cpp': '⚙️', '.h': '⚙️',
+        // 可执行
+        '.exe': '⚙️', '.msi': '📦', '.apk': '📱',
+        // 其他常见
+        '.iso': '💿', '.img': '💿'
+    };
+
+    // 默认图标
+    const defaultIcon = '📄';
+
+    // HTML转义函数 - 必须在使用前定义
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // 获取文件图标
+    function getFileIcon(filename) {
+        const ext = filename.substring(filename.lastIndexOf('.')).toLowerCase();
+        return iconMap[ext] || defaultIcon;
+    }
 
     // 格式化文件大小
     function formatFileSize(bytes) {
         if (bytes === 0) return '0 B';
         const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    // 渲染文件树
-    function renderFileTree(files, level = 0) {
-        if (!files || files.length === 0) {
-            return '<div class="empty">暂无文件</div>';
+    // 格式化日期
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        return date.toLocaleString('zh-CN');
+    }
+
+    // 规范化路径 - 统一使用正斜杠，移除首尾斜杠
+    function normalizePath(path) {
+        if (!path) return '';
+        // 将反斜杠替换为正斜杠
+        let normalized = path.replace(/\\/g, '/');
+        // 移除开头的斜杠
+        if (normalized.startsWith('/')) {
+            normalized = normalized.substring(1);
+        }
+        // 移除结尾的斜杠
+        if (normalized.endsWith('/')) {
+            normalized = normalized.slice(0, -1);
+        }
+        return normalized;
+    }
+
+    // 获取上级路径
+    function getParentPath(path) {
+        if (!path) return '';
+        const normalized = normalizePath(path);
+        if (!normalized) return '';
+        const parts = normalized.split('/');
+        parts.pop();
+        return parts.join('/');
+    }
+
+    // 更新当前路径显示
+    function updatePathDisplay() {
+        const displayEl = document.getElementById('currentPathDisplay');
+        const backBtn = document.getElementById('backButton');
+
+        if (!currentPath) {
+            displayEl.textContent = '根目录';
+            backBtn.disabled = true;
+        } else {
+            displayEl.textContent = '/' + currentPath;
+            backBtn.disabled = false;
+        }
+    }
+
+    // 返回上级目录
+    function goBack() {
+        if (!currentPath) return;
+        const parentPath = getParentPath(currentPath);
+        navigateTo(parentPath);
+    }
+
+    // 导航到指定目录
+    function navigateTo(path) {
+        currentPath = normalizePath(path || '');
+        updatePathDisplay();
+        loadCurrentDirectory();
+    }
+
+    // 根据路径查找目录（路径已规范化为正斜杠）
+    function findDirectoryByPath(nodes, targetPath) {
+        if (!targetPath) {
+            // 根目录，返回包含所有节点的虚拟根
+            return { children: nodes };
         }
 
-        return `<ul class="file-list" style="padding-left: ${level * 20}px">` +
-            files.map(file => {
-                if (file.type === 'directory') {
-                    return `
-                            <li class="file-item directory-item">
-                                <div class="item-content" onclick="toggleDirectory(this)">
-                                    <span class="dir-icon">📁</span>
-                                    <span class="file-name">${escapeHtml(file.name)}</span>
-                                    <span class="file-size">(${file.children ? file.children.length : 0} 项)</span>
-                                </div>
-                                <div class="children" style="display: none;">
-                                    ${file.children ? renderFileTree(file.children, level + 1) : ''}
-                                </div>
-                            </li>
-                        `;
-                } else {
-                    return `
-                            <li class="file-item">
-                                <a href="/api/download/${encodeURIComponent(file.path)}" class="download-link">
-                                    <div class="item-content">
-                                        <span class="file-icon">📄</span>
-                                        <span class="file-name">${escapeHtml(file.name)}</span>
-                                        <span class="file-size">${formatFileSize(file.size)}</span>
-                                    </div>
-                                </a>
-                            </li>
-                        `;
-                }
-            }).join('') +
-            `</ul>`;
+        const parts = targetPath.split('/').filter(p => p);
+        let current = { children: nodes };
+
+        for (const part of parts) {
+            if (!current.children) return null;
+
+            const found = current.children.find(child =>
+                child.type === 'directory' && child.name === part
+            );
+
+            if (!found) return null;
+            current = found;
+        }
+
+        return current;
     }
 
-    // HTML转义
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+    // 渲染文件列表
+    function renderFileList(items) {
+        const fileListEl = document.getElementById('fileList');
 
-    // 切换目录展开/收起
-    function toggleDirectory(element) {
-        const children = element.parentElement.querySelector('.children');
-        if (children) {
-            if (children.style.display === 'none') {
-                children.style.display = 'block';
-                element.querySelector('.dir-icon').textContent = '📂';
+        if (!items || items.length === 0) {
+            fileListEl.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <p>此文件夹为空</p>
+                    </div>
+                `;
+            return;
+        }
+
+        // 排序：文件夹在前，文件在后
+        const sorted = [...items].sort((a, b) => {
+            if (a.type === 'directory' && b.type !== 'directory') return -1;
+            if (a.type !== 'directory' && b.type === 'directory') return 1;
+            return a.name.localeCompare(b.name, 'zh-CN');
+        });
+
+        let html = '';
+        for (const item of sorted) {
+            if (item.type === 'directory') {
+                // 构建进入该文件夹的完整路径
+                const dirFullPath = currentPath ? `${currentPath}/${item.name}` : item.name;
+                html += `
+                        <div class="file-item directory" data-path="${escapeHtml(dirFullPath)}">
+                            <div class="file-icon">📁</div>
+                            <div class="file-info">
+                                <div class="file-name">${escapeHtml(item.name)}</div>
+                                <div class="file-meta">${item.itemCount || 0} 个项目</div>
+                            </div>
+                            <div class="file-size"></div>
+                        </div>
+                    `;
             } else {
-                children.style.display = 'none';
-                element.querySelector('.dir-icon').textContent = '📁';
+                const icon = getFileIcon(item.name);
+                const sizeStr = formatFileSize(item.size);
+                const dateStr = item.modified ? formatDate(item.modified) : '';
+                // 构建文件的完整路径
+                const fileFullPath = currentPath ? `${currentPath}/${item.name}` : item.name;
+                html += `
+                        <div class="file-item file" data-file="${escapeHtml(item.name)}" data-path="${escapeHtml(fileFullPath)}">
+                            <div class="file-icon">${icon}</div>
+                            <div class="file-info">
+                                <div class="file-name">${escapeHtml(item.name)}</div>
+                                <div class="file-meta">修改时间: ${dateStr}</div>
+                            </div>
+                            <div class="file-size">${sizeStr}</div>
+                            <button class="download-btn" data-path="${escapeHtml(fileFullPath)}">下载</button>
+                        </div>
+                    `;
             }
         }
+
+        fileListEl.innerHTML = html;
+
+        // 绑定文件夹点击事件
+        fileListEl.querySelectorAll('.file-item.directory').forEach(el => {
+            el.addEventListener('click', (e) => {
+                // 防止点击到子元素时冒泡问题
+                if (e.target.classList.contains('download-btn')) return;
+                const path = el.getAttribute('data-path');
+                if (path !== undefined && path !== null) {
+                    navigateTo(path);
+                }
+            });
+        });
+
+        // 绑定下载按钮事件
+        fileListEl.querySelectorAll('.download-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const filePath = btn.getAttribute('data-path');
+                if (filePath) {
+                    downloadFile(filePath);
+                }
+            });
+        });
+
+        // 绑定文件项点击事件（点击文件区域也下载）
+        fileListEl.querySelectorAll('.file-item.file').forEach(el => {
+            el.addEventListener('click', (e) => {
+                if (e.target.classList.contains('download-btn')) return;
+                const filePath = el.getAttribute('data-path');
+                if (filePath) {
+                    downloadFile(filePath);
+                }
+            });
+        });
     }
 
-    // 加载文件列表
-    async function loadFileList() {
-        const fileListDiv = document.getElementById('fileList');
-        const refreshBtn = document.getElementById('refreshBtn');
+    // 加载当前目录内容
+    async function loadCurrentDirectory() {
+        const fileListEl = document.getElementById('fileList');
+        fileListEl.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>加载中...</p>
+                </div>
+            `;
 
         try {
-            fileListDiv.innerHTML = '<div class="loading">加载中...</div>';
-            refreshBtn.classList.add('loading');
-
+            // 获取完整文件树
             const response = await fetch('/api/files');
             const data = await response.json();
 
-            if (data.success) {
-                if (data.files && data.files.length > 0) {
-                    fileListDiv.innerHTML = renderFileTree(data.files);
-                } else {
-                    fileListDiv.innerHTML = '<div class="empty">📭 暂无文件，请将文件放入 files 目录</div>';
-                }
-            } else {
+            if (!data.success) {
                 throw new Error(data.error || '加载失败');
             }
+
+            // 根据当前路径查找对应的目录节点
+            let currentDir = findDirectoryByPath(data.files, currentPath);
+
+            // 如果没有找到且currentPath不为空，说明路径可能有问题
+            if (currentPath && !currentDir) {
+                console.warn('路径不存在:', currentPath);
+                currentDir = { children: [] };
+            } else if (!currentDir) {
+                currentDir = { children: data.files };
+            }
+
+            renderFileList(currentDir?.children || []);
+            updateStats(currentDir?.children || []);
+
         } catch (error) {
             console.error('加载失败:', error);
-            fileListDiv.innerHTML = `<div class="error">❌ 加载失败: ${error.message}<br><br>请确保服务器已正确配置文件目录</div>`;
-        } finally {
-            refreshBtn.classList.remove('loading');
+            fileListEl.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">⚠️</div>
+                        <p>加载失败: ${error.message}</p>
+                        <button onclick="location.reload()" style="margin-top: 16px; padding: 8px 24px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">重试</button>
+                    </div>
+                `;
         }
     }
 
-    // 页面加载时获取文件列表
+    // 下载文件
+    function downloadFile(filePath) {
+        // 确保路径使用正斜杠
+        const normalizedPath = normalizePath(filePath);
+        const downloadUrl = `/api/download/${encodeURIComponent(normalizedPath)}`;
+
+        // 创建隐藏链接下载
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = '';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // 显示提示
+        const fileName = normalizedPath.split('/').pop();
+        showToast(`开始下载: ${fileName}`);
+    }
+
+    // 简单的提示
+    function showToast(message) {
+        // 检查是否已有toast
+        let toast = document.querySelector('.toast-message');
+        if (toast) {
+            toast.remove();
+        }
+
+        toast = document.createElement('div');
+        toast.className = 'toast-message';
+        toast.textContent = message;
+        toast.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0,0,0,0.8);
+                color: white;
+                padding: 8px 20px;
+                border-radius: 24px;
+                font-size: 14px;
+                z-index: 1000;
+                animation: fadeOut 2s ease forwards;
+            `;
+
+        // 添加动画
+        const style = document.createElement('style');
+        style.textContent = `
+                @keyframes fadeOut {
+                    0% { opacity: 1; visibility: visible; }
+                    70% { opacity: 1; visibility: visible; }
+                    100% { opacity: 0; visibility: hidden; }
+                }
+            `;
+        document.head.appendChild(style);
+
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            if (toast.parentNode) toast.remove();
+        }, 2000);
+    }
+
+    // 更新统计信息
+    function updateStats(items) {
+        const statsEl = document.getElementById('stats');
+        const fileCount = items.filter(i => i.type === 'file').length;
+        const dirCount = items.filter(i => i.type === 'directory').length;
+
+        let pathDisplay = currentPath ? `/ ${currentPath}` : '根目录';
+        statsEl.innerHTML = `📁 ${dirCount} 个文件夹 &nbsp;|&nbsp; 📄 ${fileCount} 个文件`;
+    }
+
+    // 页面初始化
     document.addEventListener('DOMContentLoaded', () => {
-        loadFileList();
+        // 绑定返回按钮事件
+        const backBtn = document.getElementById('backButton');
+        backBtn.addEventListener('click', goBack);
 
-        // 刷新按钮事件
-        document.getElementById('refreshBtn').addEventListener('click', loadFileList);
+        // 初始加载
+        updatePathDisplay();
+        loadCurrentDirectory();
     });
-
-    // 全局函数供onclick使用
-    window.toggleDirectory = toggleDirectory;
 </script>
 </body>
 </html>
