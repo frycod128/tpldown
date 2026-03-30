@@ -303,12 +303,51 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// 启动服务器
-app.listen(PORT, () => {
+// 获取本机 IP 地址的函数
+const getLocalIPs = () => {
+    const { networkInterfaces } = require('os');
+    const nets = networkInterfaces();
+    const ips = { ipv4: [], ipv6: [] };
+
+    for (const name of Object.keys(nets)) {
+        for (const net of nets[name]) {
+            if (!net.internal) {
+                if (net.family === 'IPv4') {
+                    ips.ipv4.push(net.address);
+                } else if (net.family === 'IPv6') {
+                    ips.ipv6.push(net.address);
+                }
+            }
+        }
+    }
+    return ips;
+};
+
+// 启动服务器 - 同时支持 IPv4 和 IPv6
+const HOST = '::'; // 监听所有 IPv4 和 IPv6 地址
+app.listen(PORT, HOST, () => {
     console.log('\n=================================');
     console.log('🚀 文件下载服务已启动');
     console.log('=================================');
-    console.log(`📍 访问地址: http://localhost:${PORT}`);
+    console.log(`📍 本地访问:`);
+    console.log(`   - IPv4: http://localhost:${PORT}`);
+    console.log(`   - IPv6: http://[::1]:${PORT}`);
+
+    const ips = getLocalIPs();
+    if (ips.ipv4.length > 0) {
+        console.log(`📍 局域网 IPv4 访问:`);
+        ips.ipv4.forEach(ip => {
+            console.log(`   - http://${ip}:${PORT}`);
+        });
+    }
+
+    if (ips.ipv6.length > 0) {
+        console.log(`📍 局域网 IPv6 访问:`);
+        ips.ipv6.forEach(ip => {
+            console.log(`   - http://[${ip}]:${PORT}`);
+        });
+    }
+
     console.log(`📂 文件目录: ${config.getConfig().resolvedFilesDirectory}`);
     console.log(`⚙️  配置文件: ${config.configPath}`);
     console.log('=================================\n');
