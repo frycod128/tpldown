@@ -23,6 +23,13 @@ const defaultConfig = {
     allowedFileExtensions: [],   // 允许的文件扩展名，空数组表示允许所有
     blockedFileExtensions: ['.exe', '.sh', '.bat'],  // 禁止下载的文件扩展名
 
+    // 路径安全配置
+    security: {
+        allowSymlinks: false,    // 是否允许符号链接（默认不允许）
+        allowOutside: false,     // 是否允许访问目录外的文件（默认不允许，危险配置）
+        followSymlinks: false    // 是否跟踪符号链接到实际文件（默认不跟踪）
+    },
+
     // 日志配置
     enableLogging: true,         // 是否启用日志
     logLevel: 'info',            // 日志级别: debug, info, warn, error
@@ -64,10 +71,17 @@ class ConfigManager {
             if (fs.existsSync(this.configPath)) {
                 const configData = fs.readFileSync(this.configPath, 'utf8');
                 const userConfig = JSON.parse(configData);
+
                 // 深度合并 fileIcons 配置
                 if (userConfig.fileIcons) {
                     userConfig.fileIcons = { ...defaultConfig.fileIcons, ...userConfig.fileIcons };
                 }
+
+                // 深度合并 security 配置
+                if (userConfig.security) {
+                    userConfig.security = { ...defaultConfig.security, ...userConfig.security };
+                }
+
                 this.config = { ...defaultConfig, ...userConfig };
                 console.log('✅ 配置文件加载成功:', this.configPath);
                 this.validateConfig();
@@ -112,6 +126,21 @@ class ConfigManager {
         if (this.config.port < 1 || this.config.port > 65535) {
             console.warn('⚠️ 端口号无效，使用默认值 3000');
             this.config.port = 3000;
+        }
+
+        // 确保 security 配置存在
+        if (!this.config.security) {
+            this.config.security = { ...defaultConfig.security };
+        }
+
+        // 安全配置警告
+        if (this.config.security.allowOutside) {
+            console.warn('⚠️⚠️⚠️ 警告: allowOutside 已启用，这是危险配置！');
+            console.warn('⚠️⚠️⚠️ 允许访问文件目录以外的文件可能导致系统文件泄露！');
+        }
+
+        if (this.config.security.allowSymlinks) {
+            console.log('ℹ️  符号链接支持已启用');
         }
     }
 
