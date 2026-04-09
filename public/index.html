@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文件下载服务</title>
     <style>
-        /* 样式保持不变，省略... */
+        /* ... 保持原有样式不变 ... */
         * {
             margin: 0;
             padding: 0;
@@ -78,7 +78,12 @@
             color: #409eff;
         }
 
-        .back-button {
+        .nav-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-button {
             background: #f0f2f5;
             border: none;
             padding: 8px 16px;
@@ -90,14 +95,15 @@
             align-items: center;
             gap: 6px;
             transition: all 0.2s;
+            text-decoration: none;
         }
 
-        .back-button:hover {
+        .nav-button:hover {
             background: #e4e7ed;
             color: #409eff;
         }
 
-        .back-button:disabled {
+        .nav-button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
@@ -119,10 +125,6 @@
 
         .file-item:hover {
             background: #f5f7fa;
-        }
-
-        .file-item:last-child {
-            border-bottom: none;
         }
 
         .file-item.directory {
@@ -222,6 +224,30 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
 
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .breadcrumb-item {
+            color: #409eff;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .breadcrumb-item:hover {
+            background: #e4e7ed;
+        }
+
+        .breadcrumb-separator {
+            color: #c0c4cc;
+            margin: 0 4px;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 12px;
@@ -247,6 +273,30 @@
                 margin-top: 8px;
                 margin-left: 56px;
             }
+
+            .breadcrumb {
+                font-size: 12px;
+            }
+        }
+
+        .toast-message {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 24px;
+            font-size: 14px;
+            z-index: 1000;
+            animation: fadeOut 2s ease forwards;
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 1; visibility: visible; }
+            70% { opacity: 1; visibility: visible; }
+            100% { opacity: 0; visibility: hidden; }
         }
     </style>
 </head>
@@ -260,11 +310,16 @@
     <div class="nav-bar">
         <div class="current-location">
             <span class="label">当前位置：</span>
-            <span class="path" id="currentPathDisplay">根目录</span>
+            <div class="breadcrumb" id="breadcrumb"></div>
         </div>
-        <button class="back-button" id="backButton" title="返回上级目录">
-            🔙 返回上级
-        </button>
+        <div class="nav-buttons">
+            <a class="nav-button" id="homeButton" href="/" title="返回根目录">
+                🏠 根目录
+            </a>
+            <button class="nav-button" id="backButton" title="返回上级目录">
+                🔙 返回上级
+            </button>
+        </div>
     </div>
 
     <div class="file-list" id="fileList">
@@ -280,6 +335,7 @@
 <script>
     let currentPath = '';
     let iconConfig = { icons: {}, defaultIcon: '📄' };
+    let fileTreeData = null;
 
     // HTML转义函数
     function escapeHtml(str) {
@@ -323,6 +379,25 @@
         return normalized;
     }
 
+    // 从 URL hash 获取路径
+    function getPathFromHash() {
+        const hash = window.location.hash.slice(1); // 移除开头的 #
+        if (!hash) return '';
+        try {
+            return decodeURIComponent(hash);
+        } catch (e) {
+            return '';
+        }
+    }
+
+    // 更新 URL hash
+    function updateHash(path) {
+        const newHash = path ? '#' + encodeURIComponent(path) : '';
+        if (window.location.hash !== newHash) {
+            history.pushState(null, '', newHash || window.location.pathname);
+        }
+    }
+
     // 获取上级路径
     function getParentPath(path) {
         if (!path) return '';
@@ -333,18 +408,41 @@
         return parts.join('/');
     }
 
-    // 更新当前路径显示
-    function updatePathDisplay() {
-        const displayEl = document.getElementById('currentPathDisplay');
-        const backBtn = document.getElementById('backButton');
-
+    // 渲染面包屑导航
+    function renderBreadcrumb() {
+        const breadcrumbEl = document.getElementById('breadcrumb');
         if (!currentPath) {
-            displayEl.textContent = '根目录';
-            backBtn.disabled = true;
-        } else {
-            displayEl.textContent = '/' + currentPath;
-            backBtn.disabled = false;
+            breadcrumbEl.innerHTML = '<span class="breadcrumb-item" data-path="">根目录</span>';
+            breadcrumbEl.querySelector('[data-path=""]')?.addEventListener('click', () => navigateTo(''));
+            return;
         }
+
+        const parts = currentPath.split('/').filter(p => p);
+        let html = '<span class="breadcrumb-item" data-path="">根目录</span>';
+
+        let accumulatedPath = '';
+        for (let i = 0; i < parts.length; i++) {
+            accumulatedPath += (accumulatedPath ? '/' : '') + parts[i];
+            html += '<span class="breadcrumb-separator">/</span>';
+            html += `<span class="breadcrumb-item" data-path="${escapeHtml(accumulatedPath)}">${escapeHtml(parts[i])}</span>`;
+        }
+
+        breadcrumbEl.innerHTML = html;
+
+        // 绑定点击事件
+        breadcrumbEl.querySelectorAll('.breadcrumb-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const path = el.getAttribute('data-path') || '';
+                navigateTo(path);
+            });
+        });
+    }
+
+    // 更新当前路径显示和按钮状态
+    function updatePathDisplay() {
+        const backBtn = document.getElementById('backButton');
+        backBtn.disabled = !currentPath;
+        renderBreadcrumb();
     }
 
     // 返回上级目录
@@ -356,9 +454,13 @@
 
     // 导航到指定目录
     function navigateTo(path) {
-        currentPath = normalizePath(path || '');
+        const normalizedPath = normalizePath(path || '');
+        if (normalizedPath === currentPath) return;
+
+        currentPath = normalizedPath;
+        updateHash(currentPath);
         updatePathDisplay();
-        loadCurrentDirectory();
+        renderCurrentDirectory();
     }
 
     // 根据路径查找目录
@@ -387,11 +489,11 @@
 
         if (!items || items.length === 0) {
             fileListEl.innerHTML = `
-                    <div class="empty-state">
-                        <div class="icon">📭</div>
-                        <p>此文件夹为空</p>
-                    </div>
-                `;
+                <div class="empty-state">
+                    <div class="icon">📭</div>
+                    <p>此文件夹为空</p>
+                </div>
+            `;
             return;
         }
 
@@ -406,32 +508,31 @@
             if (item.type === 'directory') {
                 const dirFullPath = currentPath ? `${currentPath}/${item.name}` : item.name;
                 html += `
-                        <div class="file-item directory" data-path="${escapeHtml(dirFullPath)}">
-                            <div class="file-icon">📁</div>
-                            <div class="file-info">
-                                <div class="file-name">${escapeHtml(item.name)}</div>
-                                <div class="file-meta">${item.itemCount || 0} 个项目</div>
-                            </div>
-                            <div class="file-size"></div>
+                    <div class="file-item directory" data-path="${escapeHtml(dirFullPath)}">
+                        <div class="file-icon">📁</div>
+                        <div class="file-info">
+                            <div class="file-name">${escapeHtml(item.name)}</div>
+                            <div class="file-meta">${item.itemCount || 0} 个项目</div>
                         </div>
-                    `;
+                        <div class="file-size"></div>
+                    </div>
+                `;
             } else {
-                // 使用后端返回的图标，如果没有则用函数获取
                 const icon = item.icon || getFileIcon(item.name);
                 const sizeStr = formatFileSize(item.size);
                 const dateStr = item.modified ? formatDate(item.modified) : '';
                 const fileFullPath = currentPath ? `${currentPath}/${item.name}` : item.name;
                 html += `
-                        <div class="file-item file" data-file="${escapeHtml(item.name)}" data-path="${escapeHtml(fileFullPath)}">
-                            <div class="file-icon">${icon}</div>
-                            <div class="file-info">
-                                <div class="file-name">${escapeHtml(item.name)}</div>
-                                <div class="file-meta">修改时间: ${dateStr}</div>
-                            </div>
-                            <div class="file-size">${sizeStr}</div>
-                            <button class="download-btn" data-path="${escapeHtml(fileFullPath)}">下载</button>
+                    <div class="file-item file" data-file="${escapeHtml(item.name)}" data-path="${escapeHtml(fileFullPath)}">
+                        <div class="file-icon">${icon}</div>
+                        <div class="file-info">
+                            <div class="file-name">${escapeHtml(item.name)}</div>
+                            <div class="file-meta">修改时间: ${dateStr}</div>
                         </div>
-                    `;
+                        <div class="file-size">${sizeStr}</div>
+                        <button class="download-btn" data-path="${escapeHtml(fileFullPath)}">下载</button>
+                    </div>
+                `;
             }
         }
 
@@ -465,15 +566,37 @@
         });
     }
 
-    // 加载当前目录内容
-    async function loadCurrentDirectory() {
+    // 渲染当前目录内容（使用已加载的数据）
+    function renderCurrentDirectory() {
+        if (!fileTreeData) {
+            loadFileTree();
+            return;
+        }
+
+        let currentDir = findDirectoryByPath(fileTreeData.files, currentPath);
+        if (currentPath && !currentDir) {
+            // 路径不存在，返回根目录
+            currentPath = '';
+            updateHash('');
+            updatePathDisplay();
+            currentDir = { children: fileTreeData.files };
+        } else if (!currentDir) {
+            currentDir = { children: fileTreeData.files };
+        }
+
+        renderFileList(currentDir?.children || []);
+        updateStats(currentDir?.children || [], fileTreeData.stats);
+    }
+
+    // 加载文件树
+    async function loadFileTree() {
         const fileListEl = document.getElementById('fileList');
         fileListEl.innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>加载中...</p>
-                </div>
-            `;
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>加载中...</p>
+            </div>
+        `;
 
         try {
             const response = await fetch('/api/files');
@@ -483,25 +606,35 @@
                 throw new Error(data.error || '加载失败');
             }
 
-            let currentDir = findDirectoryByPath(data.files, currentPath);
-            if (currentPath && !currentDir) {
-                currentDir = { children: [] };
-            } else if (!currentDir) {
-                currentDir = { children: data.files };
+            fileTreeData = data;
+
+            // 从 URL hash 恢复路径
+            const hashPath = getPathFromHash();
+            if (hashPath) {
+                // 验证路径是否存在
+                const testDir = findDirectoryByPath(data.files, hashPath);
+                if (testDir) {
+                    currentPath = hashPath;
+                } else {
+                    currentPath = '';
+                    updateHash('');
+                }
+            } else {
+                currentPath = '';
             }
 
-            renderFileList(currentDir?.children || []);
-            updateStats(currentDir?.children || []);
+            updatePathDisplay();
+            renderCurrentDirectory();
 
         } catch (error) {
             console.error('加载失败:', error);
             fileListEl.innerHTML = `
-                    <div class="empty-state">
-                        <div class="icon">⚠️</div>
-                        <p>加载失败: ${error.message}</p>
-                        <button onclick="location.reload()" style="margin-top: 16px; padding: 8px 24px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">重试</button>
-                    </div>
-                `;
+                <div class="empty-state">
+                    <div class="icon">⚠️</div>
+                    <p>加载失败: ${error.message}</p>
+                    <button onclick="location.reload()" style="margin-top: 16px; padding: 8px 24px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">重试</button>
+                </div>
+            `;
         }
     }
 
@@ -545,29 +678,6 @@
         toast = document.createElement('div');
         toast.className = 'toast-message';
         toast.textContent = message;
-        toast.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(0,0,0,0.8);
-                color: white;
-                padding: 8px 20px;
-                border-radius: 24px;
-                font-size: 14px;
-                z-index: 1000;
-                animation: fadeOut 2s ease forwards;
-            `;
-
-        const style = document.createElement('style');
-        style.textContent = `
-                @keyframes fadeOut {
-                    0% { opacity: 1; visibility: visible; }
-                    70% { opacity: 1; visibility: visible; }
-                    100% { opacity: 0; visibility: hidden; }
-                }
-            `;
-        document.head.appendChild(style);
         document.body.appendChild(toast);
 
         setTimeout(() => {
@@ -576,12 +686,40 @@
     }
 
     // 更新统计信息
-    function updateStats(items) {
+    function updateStats(items, stats) {
         const statsEl = document.getElementById('stats');
         const fileCount = items.filter(i => i.type === 'file').length;
         const dirCount = items.filter(i => i.type === 'directory').length;
-        const pathDisplay = currentPath ? `/ ${currentPath}` : '根目录';
-        statsEl.innerHTML = `📍 ${pathDisplay} &nbsp;|&nbsp; 📁 ${dirCount} 个文件夹 &nbsp;|&nbsp; 📄 ${fileCount} 个文件`;
+        const pathDisplay = currentPath ? `/${currentPath}` : '根目录';
+
+        let statsHtml = `📍 ${pathDisplay} &nbsp;|&nbsp; 📁 ${dirCount} 个文件夹 &nbsp;|&nbsp; 📄 ${fileCount} 个文件`;
+
+        if (stats) {
+            if (stats.isTruncated) {
+                statsHtml += ` &nbsp;|&nbsp; ⚠️ 已截断 (显示 ${stats.totalCount}/${stats.maxAllowed})`;
+            }
+        }
+
+        statsEl.innerHTML = statsHtml;
+    }
+
+    // 处理浏览器前进/后退
+    function handlePopState() {
+        const hashPath = getPathFromHash();
+        if (fileTreeData) {
+            const testDir = findDirectoryByPath(fileTreeData.files, hashPath);
+            if (testDir) {
+                currentPath = hashPath;
+            } else {
+                currentPath = '';
+                updateHash('');
+            }
+            updatePathDisplay();
+            renderCurrentDirectory();
+        } else {
+            // 数据还没加载，等加载完成后会处理
+            currentPath = hashPath;
+        }
     }
 
     // 页面初始化
@@ -591,8 +729,21 @@
         const backBtn = document.getElementById('backButton');
         backBtn.addEventListener('click', goBack);
 
+        // 监听浏览器前进/后退
+        window.addEventListener('popstate', handlePopState);
+
+        // 拦截根目录链接点击，使用 SPA 导航
+        document.getElementById('homeButton').addEventListener('click', (e) => {
+            e.preventDefault();
+            navigateTo('');
+        });
+
+        // 初始化时从 URL 获取路径
+        const initialPath = getPathFromHash();
+        currentPath = initialPath;
+
         updatePathDisplay();
-        loadCurrentDirectory();
+        loadFileTree();
     });
 </script>
 </body>

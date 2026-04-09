@@ -333,6 +333,23 @@ const getLocalIPs = () => {
     return ips;
 };
 
+// 前端路由支持 - 所有非 API 和非静态资源的请求都返回 index.html
+app.get('*', (req, res) => {
+    // 排除 API 请求
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: 'API 端点不存在' });
+    }
+
+    // 排除静态资源请求（已经由 express.static 处理，这里作为后备）
+    const ext = path.extname(req.path);
+    if (ext && ext !== '.html') {
+        return res.status(404).send('Not Found');
+    }
+
+    // 返回 index.html，让前端处理路由
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // 启动服务器 - 同时支持 IPv4 和 IPv6
 const HOST = '::'; // 监听所有 IPv4 和 IPv6 地址
 app.listen(PORT, HOST, () => {
