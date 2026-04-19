@@ -10,6 +10,7 @@
 /httpRequests/
 # node相关
 node_modules/
+/package-lock.json
 # 内容文件夹
 files/
 # 操作系统文件
